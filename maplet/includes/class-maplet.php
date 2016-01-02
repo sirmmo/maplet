@@ -1,5 +1,20 @@
 <?php
 
+function zip() {
+  $params = func_get_args();
+  if (count($params) === 1){ // this case could be probably cleaner
+    // single iterable passed
+    $result = array();
+    foreach ($params[0] as $item){
+        $result[] = array($item);
+    };
+    return $result;
+  };
+  $result = call_user_func_array('array_map',array_merge(array(null),$params));
+  $length = min(array_map('count', $params));
+  return array_slice($result, 0, $length);
+};
+
 /**
  * The file that defines the core plugin class
  *
@@ -121,6 +136,90 @@ class Maplet {
 
 		$this->loader = new Maplet_Loader();
 
+
+		// Add menu item
+		$this->loader->add_action( 'admin_menu', $plugin_admin, 'add_plugin_admin_menu' );
+		// Add Settings link to the plugin
+		$plugin_basename = plugin_basename( plugin_dir_path( __DIR__ ) . $this->plugin_name . '.php' );
+		$this->loader->add_filter( 'plugin_action_links_' . $plugin_basename, $plugin_admin, 'add_action_links' );
+		$this->loader->add_action('admin_init', $plugin_admin, 'options_update');
+		$this->loader->add_action( 'init', $plugin_public, 'register_shortcodes' );
+
+	}
+
+	protected $maps = array(
+		"osm" => array("name"=>"", "url"=>"http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", "attribution"=>"Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors"),
+
+		"stamen.toner" => array("name"=>"", "url"=>"", "attribution"=>""),
+		"stamen.toner-light" => array("name"=>"", "url"=>"", "attribution"=>""),
+		"stamen.watercolor" => array("name"=>"", "url"=>"", "attribution"=>""),
+
+		"mapbox.pirates" => array("name"=>"Pirates", "url"=>"", "attribution"=>""),
+		"mapbox.vintage",//mslee.cif5p01n202nisaktvljx9mv3 => array("name"=>"", "url"=>"", "attribution"=>""),
+
+		"thunderforest.opencyclemap" => array("name"=>"OpenCycleMap", "url"=>"https://[abc].tile.thunderforest.com/cycle/{z}/{x}/{y}.png", "attribution"=>""),
+		"thunderforest.transport" => array("name"=>"OSM Transport", "url"=>"https://[abc].tile.thunderforest.com/transport/{z}/{x}/{y}.png", "attribution"=>""),
+		"thunderforest.landscape" => array("name"=>"Landscape", "url"=>"https://[abc].tile.thunderforest.com/landscape/{z}/{x}/{y}.png", "attribution"=>""),
+		"thunderforest.outdoors" => array("name"=>"", "url"=>"https://[abc].tile.thunderforest.com/outdoors/{z}/{x}/{y}.png", "attribution"=>""),
+		"thunderforest.transport-dark" => array("name"=>"", "url"=>"https://[abc].tile.thunderforest.com/transport-dark/{z}/{x}/{y}.png", "attribution"=>""),
+		"thunderforest.spinal" => array("name"=>"", "url"=>"https://[abc].tile.thunderforest.com/pioneer/{z}/{x}/{y}.png", "attribution"=>""),
+		"thunderforest.pioneer" => array("name"=>"", "url"=>"https://[abc].tile.thunderforest.com/pioneer/{z}/{x}/{y}.png", "attribution"=>""),
+
+		"cartodb.positron" => array("name"=>"", "url"=>"http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", "attribution"=>"&copy; <a href=\"http://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, &copy; <a href=\"http://cartodb.com/attributions\">CartoDB</a>"),
+		"cartodb.positron-nolabels" => array("name"=>"", "url"=>"http://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png", "attribution"=>"&copy; <a href=\"http://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, &copy; <a href=\"http://cartodb.com/attributions\">CartoDB</a>"),
+		"cartodb.positron-onlylabels" => array("name"=>"", "url"=>"http://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png", "attribution"=>"&copy; <a href=\"http://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, &copy; <a href=\"http://cartodb.com/attributions\">CartoDB</a>"),
+		"cartodb.darkmatter" => array("name"=>"", "url"=>"http://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png", "attribution"=>"&copy; <a href=\"http://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, &copy; <a href=\"http://cartodb.com/attributions\">CartoDB</a>"),
+		"cartodb.darkmatter-nolabels" => array("name"=>"", "url"=>"http://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png", "attribution"=>"&copy; <a href=\"http://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, &copy; <a href=\"http://cartodb.com/attributions\">CartoDB</a>"),
+		"cartodb.darkmatter-onlylabels" => array("name"=>"", "url"=>"http://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png", "attribution"=>"&copy; <a href=\"http://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, &copy; <a href=\"http://cartodb.com/attributions\">CartoDB</a>"),
+	)
+
+
+	public function register_shortcodes(){
+		function maplet_shortcode($atts){
+			$a = shortcode_atts( array(
+					"base" => "osm",
+					"types" => array(),
+					"icons" => array(),
+					"colors" => array(),
+					"sizes" => array(),
+					"minzoom" => 1,
+					"maxzoom" => 20,
+			), $atts );
+
+			$icns = zip($a["types"], $a["icons"], $a["sizes"]);
+
+			$les = array();
+			foreach ($types as $t) {
+				$les[$t] = get_posts(array("post_type"=>$t, "posts_per_page"=>-1));
+				foreach ($les[$t] as $e) {
+					$e->meta = get_post_meta($e->ID);
+				}
+			}
+
+			$ret = "";
+
+			$ret .= "<div id='map'></div>";
+			$ret .= '<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />';
+			$ret .= '<script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>';
+			$ret .= "<script>";
+			$ret .= "var maplet = {};";
+			$ret .= "maplet.icons = {}";
+			foreach ($icns as $icn) {
+				$ret .= 'maplet.icons['.$icn[0].'] = L.MakiMarkers.icon({icon: "'.$icn[1].'", color: "'.$icn[2].'", size: "'.$icn[3].'"});';
+			}
+			$ret .= "maplet.els = ".json_encode($les).";";
+			$ret .= "maplet.map = L.map('map', {minZoom:<? echo $a["minzoom"]; ?>, maxZoom:<?echo $a["maxzoom"]; ?>});";
+			$ret .= "maplet.bac = L.tileLayer('".$maps[$a["base"]]["url"].", {
+			    attribution: '".$maps[$a["base"]]["attribution"]."',
+			}).addTo(maplet.map);";
+			$ret .= "maplet.vec = L.featureGroup().addTo(maplet.map);";
+
+			$ret .= "</script>";
+
+
+			return $ret;
+		}
+		add_shortcode("maplet", "maplet_shortcode");
 	}
 
 	/**
