@@ -15,6 +15,16 @@ function zip() {
   return array_slice($result, 0, $length);
 };
 
+function rstring($num)
+{
+  $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  $randstring = '';
+  for ($i = 0 ; $i < $num ; $i++) {
+    $randstring = $characters[rand(0, strlen($characters))];
+  }
+  return $randstring;
+}
+
 /**
  * The file that defines the core plugin class
  *
@@ -186,7 +196,7 @@ class Maplet {
 					"maxzoom" => 20,
 			), $atts );
 
-			$icns = zip($a["types"], $a["icons"], $a["sizes"]);
+			$icns = zip($a["types"], $a["icons"], $a["colors"], $a["sizes"]);
 
 			$les = array();
 			foreach ($types as $t) {
@@ -196,9 +206,12 @@ class Maplet {
 				}
 			}
 
+			$str = rstring(7);
+
 			$ret = "";
 
-			$ret .= "<div id='map'></div>";
+
+			$ret .= "<div id='map_".$str."'></div>";
 			$ret .= '<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />';
 			$ret .= '<script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>';
 			$ret .= "<script>";
@@ -208,7 +221,7 @@ class Maplet {
 				$ret .= 'maplet.icons['.$icn[0].'] = L.MakiMarkers.icon({icon: "'.$icn[1].'", color: "'.$icn[2].'", size: "'.$icn[3].'"});';
 			}
 			$ret .= "maplet.els = ".json_encode($les).";";
-			$ret .= "maplet.map = L.map('map', {minZoom:<? echo $a["minzoom"]; ?>, maxZoom:<?echo $a["maxzoom"]; ?>});";
+			$ret .= "maplet.map = L.map('map_".$str."', {minZoom:<? echo $a["minzoom"]; ?>, maxZoom:<?echo $a["maxzoom"]; ?>});";
 			$ret .= "maplet.bac = L.tileLayer('".$maps[$a["base"]]["url"].", {
 			    attribution: '".$maps[$a["base"]]["attribution"]."',
 			}).addTo(maplet.map);";
