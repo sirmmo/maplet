@@ -157,7 +157,7 @@ class Maplet {
 
 	}
 
-	protected $maps = array(
+	private $maps = array(
 		"osm" => array("name"=>"", "url"=>"http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", "attribution"=>"Map data © <a href=\"http://openstreetmap.org\">OpenStreetMap</a> contributors"),
 
 		"stamen.toner" => array("name"=>"", "url"=>"", "attribution"=>""),
@@ -188,13 +188,18 @@ class Maplet {
 		function maplet_shortcode($atts){
 			$a = shortcode_atts( array(
 					"base" => "osm",
-					"types" => array(),
-					"icons" => array(),
-					"colors" => array(),
-					"sizes" => array(),
+					"types" => "",
+					"icons" => "",
+					"colors" => "",
+					"sizes" => "",
 					"minzoom" => 1,
 					"maxzoom" => 20,
 			), $atts );
+
+			$a["types"] = explode(",",$a["types"]);
+			$a["icons"] = explode(",",$a["icons"]);
+			$a["colors"] = explode(",",$a["colors"]);
+			$a["sizes"] = explode(",",$a["sizes"]);
 
 			$icns = zip($a["types"], $a["icons"], $a["colors"], $a["sizes"]);
 
@@ -218,7 +223,7 @@ class Maplet {
 			$ret .= "var maplet = {};";
 			$ret .= "maplet.icons = {}";
 			foreach ($icns as $icn) {
-				$ret .= 'maplet.icons['.$icn[0].'] = L.MakiMarkers.icon({icon: "'.$icn[1].'", color: "'.$icn[2].'", size: "'.$icn[3].'"});';
+				$ret .= 'maplet.icons["'.$icn[0].'"] = L.MakiMarkers.icon({icon: "'.$icn[1].'", color: "'.$icn[2].'", size: "'.$icn[3].'"});';
 			}
 			$ret .= "maplet.els = ".json_encode($les).";";
 			$ret .= "maplet.map = L.map('map_".$str."', {minZoom:<? echo $a["minzoom"]; ?>, maxZoom:<?echo $a["maxzoom"]; ?>});";
